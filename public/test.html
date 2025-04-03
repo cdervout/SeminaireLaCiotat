@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Piscine</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="game-canvas"></canvas>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./node_modules/three/build/three.module.js",
+            "three/examples/jsm/controls/OrbitControls": "./node_modules/three/examples/jsm/controls/OrbitControls.js",
+            "three/examples/jsm/objects/Water": "./node_modules/three/examples/jsm/objects/Water.js"
+        }
+    }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+        import { Water } from 'three/examples/jsm/objects/Water';
+
+        // Configuration de base
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 10);
+
+        const canvas = document.getElementById('game-canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+
+        // Contrôles
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Lumières
+        const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambient);
+
+        const sun = new THREE.DirectionalLight(0xffffff, 1);
+        sun.position.set(50, 50, 50);
+        sun.castShadow = true;
+        scene.add(sun);
+
+        // Sol
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(100, 100),
+            new THREE.MeshStandardMaterial({ color: 0x808080 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Piscine
+        const pool = new THREE.Mesh(
+            new THREE.BoxGeometry(20, 2, 20),
+            new THREE.MeshStandardMaterial({
+                color: 0x4444ff,
+                transparent: true,
+                opacity: 0.6
+            })
+        );
+        pool.position.y = -1;
+        pool.receiveShadow = true;
+        scene.add(pool);
+
+        // Eau
+        const waterGeometry = new THREE.PlaneGeometry(20, 20);
+        const water = new Water(waterGeometry, {
+            textureWidth: 512,
+            textureHeight: 512,
+            waterNormals: new THREE.TextureLoader().load('./textures/waternormals.jpg', function(texture) {
+                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+            }),
+            sunDirection: new THREE.Vector3(),
+            sunColor: 0xffffff,
+            waterColor: 0x001e0f,
+            distortionScale: 3.7
+        });
+        water.rotation.x = -Math.PI / 2;
+        scene.add(water);
+
+        // Animation
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            water.material.uniforms['time'].value += 1.0 / 60.0;
+            controls.update();
+            
+            renderer.render(scene, camera);
+        }
+
+        // Redimensionnement
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Démarrer l'animation
+        animate();
+    </script>
+</body>
+</html>

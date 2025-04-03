@@ -1,0 +1,22 @@
+{
+  "name": "piscine-froide-80",
+  "version": "1.0.0",
+  "description": "Jeu de simulation de piscine dans l'ambiance des années 80",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "gsap": "^3.12.5",
+    "howler": "^2.2.4",
+    "three": "^0.160.1"
+  },
+  "devDependencies": {
+    "vite": "^5.0.12"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

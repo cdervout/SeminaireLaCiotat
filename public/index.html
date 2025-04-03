@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piscine Froide Années 80</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <canvas id="game-canvas"></canvas>
+    
+    <!-- Interface utilisateur -->
+    <div id="ui-container">
+        <div id="controls-info" class="ui-panel">
+            <h3>Contrôles</h3>
+            <p>ZQSD / Flèches : Se déplacer</p>
+            <p>ESPACE : Plonger / Sortir</p>
+            <p>Clic : Éclabousser</p>
+        </div>
+    </div>
+
+    <!-- Chargement des dépendances -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.7.1/dist/gsap.min.js"></script>
+    
+    <!-- Point d'entrée de l'application -->
+    <script type="module">
+        import { Game } from '/src/Game.js';
+        
+        // Attendre que tout soit chargé
+        window.addEventListener('load', () => {
+            // Vérifier le support de WebGL
+            if (!window.WebGLRenderingContext) {
+                alert('Votre navigateur ne supporte pas WebGL');
+                return;
+            }
+            
+            // Créer le canvas
+            const canvas = document.getElementById('game-canvas');
+            if (!canvas) {
+                console.error('Canvas non trouvé');
+                return;
+            }
+            
+            // Démarrer le jeu
+            const game = new Game(canvas);
+            
+            // Gérer le redimensionnement
+            window.addEventListener('resize', () => {
+                game.onWindowResize();
+            });
+        });
+    </script>
+</body>
+</html>
