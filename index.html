@@ -237,7 +237,9 @@
     <script>
         // Configuration de base
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        scene.background = new THREE.Color(0x000000);
+
+        // Créer le renderer
         const renderer = new THREE.WebGLRenderer({ 
             canvas: document.querySelector('#game-canvas'), 
             antialias: true,
@@ -247,32 +249,83 @@
         renderer.shadowMap.enabled = true;
 
         // Contrôles de caméra
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         camera.position.set(0, 5, 10);
         controls.update();
 
-        // Lumières
-        const ambientLight = new THREE.AmbientLight(0xffd2a1, 0.4); // Lumière plus chaude
+        // Créer un ciel avec un effet années 80
+        const skyGeometry = new THREE.SphereGeometry(1000, 32, 32);
+        const skyMaterial = new THREE.ShaderMaterial({
+            vertexShader: `
+                varying vec3 vNormal;
+                void main() {
+                    vNormal = normalize(normal);
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                varying vec3 vNormal;
+                uniform vec3 sunPosition;
+                
+                void main() {
+                    vec3 color1 = vec3(1.0, 0.0, 0.0);    // Rouge
+                    vec3 color2 = vec3(1.0, 0.41, 0.71);  // Rose shocking
+                    vec3 color3 = vec3(0.0, 0.0, 1.0);    // Bleu
+                    vec3 color4 = vec3(0.0, 0.0, 0.0);    // Noir
+                    
+                    float t = (vNormal.y + 1.0) / 2.0;
+                    vec3 color = mix(color1, color2, t);
+                    color = mix(color, color3, t * t);
+                    color = mix(color, color4, t * t * t);
+                    
+                    // Ajouter un effet de brillance vers le soleil
+                    float sunIntensity = max(0.0, dot(vNormal, normalize(sunPosition)));
+                    color += color * sunIntensity * 0.5;
+                    
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `,
+            side: THREE.BackSide,
+            uniforms: {
+                sunPosition: { value: new THREE.Vector3(0, 2, -50) }
+            }
+        });
+        const skyMesh = new THREE.Mesh(skyGeometry, skyMaterial);
+        scene.add(skyMesh);
+
+        // Créer le soleil
+        const sunGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+        const sunMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffff00,
+            emissive: 0xffff00,
+            emissiveIntensity: 1.5,
+            metalness: 0.9,
+            roughness: 0.1
+        });
+        const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+        sun.position.set(0, 2, -50); // Positionner le soleil très loin
+        scene.add(sun);
+
+        // Créer une lumière ambiante avec une couleur années 80
+        const ambientLight = new THREE.AmbientLight(0xff69b4, 0.5);
         scene.add(ambientLight);
 
-        const sunLight = new THREE.DirectionalLight(0xffd2a1, 1.2); // Soleil plus intense et chaud
-        sunLight.position.set(10, 15, 10);
-        sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 2048;
-        sunLight.shadow.mapSize.height = 2048;
-        sunLight.shadow.camera.near = 0.5;
-        sunLight.shadow.camera.far = 50;
-        sunLight.shadow.camera.left = -25;
-        sunLight.shadow.camera.right = 25;
-        sunLight.shadow.camera.top = 25;
-        sunLight.shadow.camera.bottom = -25;
-        scene.add(sunLight);
+        // Créer une lumière directionnelle
+        const directionalLight = new THREE.DirectionalLight(0xffff00, 0.8);
+        directionalLight.position.set(0, 2, -50); // Même position que le soleil
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 100;
+        directionalLight.shadow.camera.left = -25;
+        directionalLight.shadow.camera.right = 25;
+        directionalLight.shadow.camera.top = 25;
+        directionalLight.shadow.camera.bottom = -25;
+        scene.add(directionalLight);
 
-        // Ciel
-        scene.background = new THREE.Color(0x87CEEB);
-        scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
-
-        // Sol
+        // Créer le plancher
         const groundGeometry = new THREE.PlaneGeometry(100, 100);
         const groundMaterial = new THREE.MeshStandardMaterial({ 
             color: 0x90EE90,
