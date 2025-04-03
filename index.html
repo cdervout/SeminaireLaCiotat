@@ -917,9 +917,9 @@
             sfxEnabled: true,
 
             init() {
-                // Musique de fond - synthwave rétro
+                // Musique de fond
                 this.music = new Howl({
-                    src: ['https://incompetech.com/music/royalty-free/mp3-royaltyfree/Rollin%20at%205.mp3'],
+                    src: ['/public/sounds/music.mp3'],
                     loop: true,
                     volume: 0.3,
                     html5: true
@@ -927,7 +927,7 @@
 
                 // Son de plongeon
                 this.splashSound = new Howl({
-                    src: ['https://cdn.freesound.org/previews/191/191618_3562734-lq.mp3'],
+                    src: ['/public/sounds/splash.mp3'],
                     volume: 0.4,
                     html5: true,
                     preload: true
@@ -935,7 +935,7 @@
 
                 // Son de nage
                 this.swimSound = new Howl({
-                    src: ['https://cdn.freesound.org/previews/405/405529_7018103-lq.mp3'],
+                    src: ['/public/sounds/swim.mp3'],
                     volume: 0.2,
                     html5: true,
                     preload: true
@@ -960,6 +960,12 @@
                         this.stopSwimSound();
                     }
                 });
+
+                // Vérifier que les sons sont bien chargés
+                this.splashSound.on('load', () => console.log('Splash sound loaded'));
+                this.swimSound.on('load', () => console.log('Swim sound loaded'));
+                this.splashSound.on('loaderror', (id, err) => console.error('Splash sound error:', err));
+                this.swimSound.on('loaderror', (id, err) => console.error('Swim sound error:', err));
             },
 
             playSplash(intensity = 1.0) {
