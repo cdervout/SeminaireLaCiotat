@@ -426,6 +426,10 @@
             }
 
             createModel() {
+                if (this.group) {
+                    this.scene.remove(this.group);
+                }
+
                 this.group = new THREE.Group();
                 
                 // Corps
@@ -437,7 +441,7 @@
                 });
                 this.model = new THREE.Mesh(bodyGeometry, bodyMaterial);
                 this.model.castShadow = true;
-                
+
                 // Tête
                 const headGeometry = new THREE.SphereGeometry(0.25, 16, 16);
                 const headMaterial = new THREE.MeshStandardMaterial({ 
@@ -449,6 +453,26 @@
                 this.head.position.y = 0.9;
                 this.head.castShadow = true;
 
+                // Bras
+                const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 8);
+                const armMaterial = new THREE.MeshStandardMaterial({ 
+                    color: this.skinColor,
+                    metalness: 0.1,
+                    roughness: 0.8
+                });
+
+                // Bras droit
+                this.rightArm = new THREE.Mesh(armGeometry, armMaterial);
+                this.rightArm.position.set(0.3, 0.5, 0);
+                this.rightArm.rotation.y = -Math.PI / 6;
+                this.rightArm.castShadow = true;
+
+                // Bras gauche
+                this.leftArm = new THREE.Mesh(armGeometry, armMaterial);
+                this.leftArm.position.set(-0.3, 0.5, 0);
+                this.leftArm.rotation.y = Math.PI / 6;
+                this.leftArm.castShadow = true;
+
                 // Cheveux
                 this.hair = this.createHair();
                 if (this.hair) {
@@ -457,13 +481,21 @@
 
                 // Maillot de bain
                 this.swimwear = this.createSwimwear();
-                
+
+                // Ajouter tous les éléments au groupe
                 this.group.add(this.model);
                 this.group.add(this.head);
                 this.group.add(this.swimwear);
+                this.group.add(this.rightArm);
+                this.group.add(this.leftArm);
+                
+                // Positionner le groupe
                 this.group.position.copy(this.position);
                 
+                // Ajouter au scène
                 this.scene.add(this.group);
+                
+                // Mettre à jour les accessoires
                 this.updateAccessories();
             }
 
@@ -625,7 +657,8 @@
             updateAccessories() {
                 // Supprimer les anciens accessoires
                 this.group.children.forEach(child => {
-                    if (child !== this.model && child !== this.head && child !== this.swimwear && child !== this.hair) {
+                    if (child !== this.model && child !== this.head && child !== this.swimwear && 
+                        child !== this.hair && child !== this.rightArm && child !== this.leftArm) {
                         this.group.remove(child);
                     }
                 });
@@ -653,16 +686,20 @@
                 }
 
                 if (this.accessories.has('wristbands')) {
-                    const wristbandGeometry = new THREE.TorusGeometry(0.1, 0.03, 8, 16);
+                    const wristbandGeometry = new THREE.TorusGeometry(0.05, 0.02, 8, 16);
                     const wristbandMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff });
                     
-                    const leftWristband = new THREE.Mesh(wristbandGeometry, wristbandMaterial);
-                    leftWristband.position.set(-0.3, 0.2, 0);
-                    this.group.add(leftWristband);
-                    
+                    // Bracelet droit
                     const rightWristband = new THREE.Mesh(wristbandGeometry, wristbandMaterial);
-                    rightWristband.position.set(0.3, 0.2, 0);
+                    rightWristband.position.set(0.35, 0.45, 0);
+                    rightWristband.rotation.x = Math.PI / 2;
                     this.group.add(rightWristband);
+                    
+                    // Bracelet gauche
+                    const leftWristband = new THREE.Mesh(wristbandGeometry, wristbandMaterial);
+                    leftWristband.position.set(-0.35, 0.45, 0);
+                    leftWristband.rotation.x = Math.PI / 2;
+                    this.group.add(leftWristband);
                 }
             }
 
@@ -683,8 +720,23 @@
                         audioManager.startSwimSound();
                     }
                 }
-                this.velocity.copy(direction);
-                this.group.lookAt(this.group.position.clone().add(direction));
+
+                // Vérifier les limites de la piscine
+                const poolWidth = 20;
+                const poolDepth = 20;
+                const margin = 1; // Marge pour éviter les bords
+
+                const newX = this.group.position.x + direction.x;
+                const newZ = this.group.position.z + direction.z;
+
+                if (Math.abs(newX) < poolWidth / 2 - margin && 
+                    Math.abs(newZ) < poolDepth / 2 - margin) {
+                    this.velocity.copy(direction);
+                    this.group.lookAt(this.group.position.clone().add(direction));
+                } else {
+                    // Si on est hors des limites, on annule le mouvement
+                    this.velocity.set(0, 0, 0);
+                }
             }
 
             stop() {
@@ -908,6 +960,84 @@
             }
         }
 
+        // PNJ
+        class NPC extends Character {
+            constructor(scene, position, options = {}) {
+                super(scene, position);
+                this.options = options;
+                this.hairStyle = options.hairStyle || 'short';
+                this.hairColor = options.hairColor || 0x000000;
+                this.swimwearType = options.swimwearType || 'speedo';
+                this.swimwearColor = options.swimwearColor || 0xff0000;
+                this.skinColor = options.skinColor || 0xffdbac;
+                this.accessories = new Set(options.accessories || []);
+                this.createModel();
+                this.startBehavior();
+            }
+
+            startBehavior() {
+                const poolWidth = 20;
+                const poolDepth = 20;
+                const margin = 1;
+                const minX = -poolWidth / 2 + margin;
+                const maxX = poolWidth / 2 - margin;
+                const minZ = -poolDepth / 2 + margin;
+                const maxZ = poolDepth / 2 - margin;
+                
+                const radius = 3 + Math.random() * 2;
+                const speed = 0.0002 + Math.random() * 0.0002;
+                const startAngle = Math.random() * Math.PI * 2;
+                const centerX = this.position.x;
+                const centerZ = this.position.z;
+
+                const animate = () => {
+                    const time = Date.now() * speed;
+                    let posX = centerX + Math.cos(time + startAngle) * radius;
+                    let posZ = centerZ + Math.sin(time + startAngle) * radius;
+
+                    // Vérifier et corriger les limites
+                    if (posX < minX) posX = minX;
+                    if (posX > maxX) posX = maxX;
+                    if (posZ < minZ) posZ = minZ;
+                    if (posZ > maxZ) posZ = maxZ;
+
+                    this.group.position.x = posX;
+                    this.group.position.z = posZ;
+                    this.group.rotation.y = -time - startAngle + Math.PI / 2;
+                    requestAnimationFrame(animate);
+                };
+                animate();
+            }
+        }
+
+        // Créer UNIQUEMENT 3 PNJ avec des styles différents
+        const npcs = [
+            new NPC(scene, new THREE.Vector3(-8, 0, -8), {
+                hairStyle: 'mohawk',
+                hairColor: 0xff69b4,
+                swimwearType: 'speedo',
+                swimwearColor: 0x00ff00,
+                accessories: ['sunglasses'],
+                skinColor: 0xffdbac
+            }),
+            new NPC(scene, new THREE.Vector3(8, 0, 8), {
+                hairStyle: 'mullet',
+                hairColor: 0xdeb887,
+                swimwearType: 'shorts',
+                swimwearColor: 0xff0000,
+                accessories: ['headband'],
+                skinColor: 0xffe4c4
+            }),
+            new NPC(scene, new THREE.Vector3(0, 0, 12), {
+                hairStyle: 'short',
+                hairColor: 0x000000,
+                swimwearType: 'speedo',
+                swimwearColor: 0x0000ff,
+                accessories: ['wristbands'],
+                skinColor: 0xd2691e
+            })
+        ];
+
         // Gestion du son
         const audioManager = {
             music: null,
@@ -1006,66 +1136,16 @@
         const player = new Character(scene, new THREE.Vector3(0, 1, 0));
         const playerControls = new PlayerControls(player);
 
-        // PNJ
-        class NPC extends Character {
-            constructor(scene, position, options = {}) {
-                super(scene, position);
-                this.options = options;
-                this.hairStyle = options.hairStyle || 'short';
-                this.hairColor = options.hairColor || 0x000000;
-                this.swimwearType = options.swimwearType || 'speedo';
-                this.swimwearColor = options.swimwearColor || 0xff0000;
-                this.skinColor = options.skinColor || 0xffdbac;
-                this.accessories = new Set(options.accessories || []);
-                this.createModel();
-                this.startBehavior();
+        // Désactiver les raccourcis clavier par défaut
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || 
+                e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+                e.key === 'z' || e.key === 's' || e.key === 'q' || e.key === 'd' ||
+                e.key === 'w' || e.key === 'a' || e.key === 's' || e.key === 'd' ||
+                e.key === ' ' || e.key === 'Shift') {
+                e.preventDefault();
             }
-
-            startBehavior() {
-                const radius = 3 + Math.random() * 2;
-                const speed = 0.0005 + Math.random() * 0.0005;
-                const startAngle = Math.random() * Math.PI * 2;
-                const centerX = this.position.x;
-                const centerZ = this.position.z;
-
-                const animate = () => {
-                    const time = Date.now() * speed;
-                    this.group.position.x = centerX + Math.cos(time + startAngle) * radius;
-                    this.group.position.z = centerZ + Math.sin(time + startAngle) * radius;
-                    this.group.rotation.y = -time - startAngle + Math.PI / 2;
-                    requestAnimationFrame(animate);
-                };
-                animate();
-            }
-        }
-
-        // Créer UNIQUEMENT 3 PNJ avec des styles différents
-        const npcs = [
-            new NPC(scene, new THREE.Vector3(-8, 0, -8), {
-                hairStyle: 'mohawk',
-                hairColor: 0xff69b4,
-                swimwearType: 'speedo',
-                swimwearColor: 0x00ff00,
-                accessories: ['sunglasses'],
-                skinColor: 0xffdbac
-            }),
-            new NPC(scene, new THREE.Vector3(8, 0, 8), {
-                hairStyle: 'mullet',
-                hairColor: 0xdeb887,
-                swimwearType: 'shorts',
-                swimwearColor: 0xff0000,
-                accessories: ['headband'],
-                skinColor: 0xffe4c4
-            }),
-            new NPC(scene, new THREE.Vector3(0, 0, 12), {
-                hairStyle: 'short',
-                hairColor: 0x000000,
-                swimwearType: 'speedo',
-                swimwearColor: 0x0000ff,
-                accessories: ['wristbands'],
-                skinColor: 0xd2691e
-            })
-        ];
+        });
 
         // Gestion de l'heure
         function updateTime() {
